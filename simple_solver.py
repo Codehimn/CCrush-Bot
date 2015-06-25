@@ -10,12 +10,12 @@ class SimpleSolver:
         self.special_candies = [1, 3, 5, 7, 9, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]
         self.simple_candies = [0, 2, 4, 6, 8, 10]
         self.striped_candies_h = [1, 3, 5, 7, 9, 11]
-        self.striped_candies_v = range(13, 19)
+        self.striped_candies_v = list(range(13, 19))
 
         self.striped_candies = self.striped_candies_h[:]
         self.striped_candies.extend(self.striped_candies_v)
 
-        self.wrapped_candies = range(19, 25)
+        self.wrapped_candies = list(range(19, 25))
         self.chocolate = [12]
         self.game_board = None
         self.potential_start_coords = set()

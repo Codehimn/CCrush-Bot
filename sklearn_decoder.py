@@ -72,7 +72,7 @@ class ImgRecognizer:
         data, test_data, train_target, test_target = cross_validation.train_test_split(np_train_data, np_values,
                                                                                        test_size=0.4, random_state=0)
         self.svc.fit(data, train_target)
-        print self.svc.score(test_data, test_target)
+        print(self.svc.score(test_data, test_target))
 
     def predict(self, img):
         resized_img = img.resize(self.downscale_res, Image.BILINEAR)

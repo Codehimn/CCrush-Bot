@@ -9,10 +9,43 @@ import simple_solver
 import cProfile
 import pstats
 
-# excelent hardcoded values :)
-board_box = (366, 166, 1008, 738)
+import re,platform ,ctypes,win32api #for subimg_location
+
+
+def _ImageSearch(file, tolerance = 30):
+    
+    screen_width = win32api.GetSystemMetrics(0)
+    screen_height = win32api.GetSystemMetrics(1)
+    bit, _ = platform.architecture()         
+    if bit == "64bit":
+        dllFunc = ctypes.windll.LoadLibrary('ImageSearchDLL_64.dll')
+    else:
+        dllFunc = ctypes.windll.LoadLibrary('ImageSearchDLL.dll')
+
+    dllFunc.ImageSearch.argtypes = (ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_char_p,)
+    dllFunc.ImageSearch.restype = ctypes.c_char_p
+    file = '*' + str(tolerance) + ' ' + file
+    _result = dllFunc.ImageSearch(0, 0, screen_width, screen_height, file.encode()).decode('utf-8').split('|')
+    if len(_result) > 1:
+        _result =  [int(i) for i in _result]
+        return(_result)
+
+
+small=Image.open('gameover.png')
+big = ImageGrab.grab()
+
+start_pos = _ImageSearch('corner_top_left.bmp')
+
+if not start_pos:
+    print('cant find corner_top_left')
+    exit()
+
+print('finded corner_top_left',start_pos)
+
+board_box = (start_pos[1]+5, start_pos[2]+5, start_pos[1] +650, start_pos[2]+580)
+
 img_size = (board_box[2]-board_box[0], board_box[3]-board_box[1])
-cell_size = (img_size[0]/9, img_size[1]/9)
+cell_size = (int(img_size[0]/9), int(img_size[1]/9))
 
 board_size = 9
 game_board = np.zeros((board_size, board_size), dtype=np.int32)
@@ -33,12 +66,12 @@ match_list = [(0, 1, 13, 19), (2, 3, 14, 20), (4, 5, 15, 21), (6, 7, 18, 22), (8
 special_candies = [1, 3, 5, 7, 9, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]
 simple_candies = [0, 2, 4, 6, 8, 10]
 striped_candies_h = [1, 3, 5, 7, 9, 11]
-striped_candies_v = range(13, 19)
+striped_candies_v = list(range(13, 19))
 
 striped_candies = striped_candies_h[:]
 striped_candies.extend(striped_candies_v)
 
-wrapped_candies = range(19, 25)
+wrapped_candies = list(range(19, 25))
 chocolate = [12]
 
 board_dict = {0: 'blue       ', 1: 's_h_blue   ', 2: 'green      ', 3: 's_h_green  ', 4: 'orange     ', 5: 's_h_orange ',
@@ -69,17 +102,20 @@ def do_move(move):
     start = move[0]
     end = move[1]
 
-    start_w = get_desktop_coords(start)
-    end_w = get_desktop_coords(end)
+    start_w = tuple( [int(i) for i in  get_desktop_coords(start)])
+    end_w = tuple( [int(i) for i in get_desktop_coords(end)])
+
+    cursor = win32api.GetCursorPos()
 
     win32api.SetCursorPos(start_w)
     win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, start_w[0], start_w[1], 0, 0)
-    time.sleep(0.3)
+    time.sleep(0.1)
     win32api.SetCursorPos(end_w)
-    time.sleep(0.3)
+    print('+++++++++++ ismov',board_is_moving())
+    time.sleep(0.1)
     win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, end_w[0], end_w[1], 0, 0)
 
-    win32api.SetCursorPos((1100, 1100))
+    win32api.SetCursorPos(cursor)
 
 
 def grab_board():
@@ -106,7 +142,7 @@ def board_is_moving():
     global ref_img
     img = ImageGrab.grab()
     img = img.crop(board_box)
-    img = img.resize((img.size[0]/4, img.size[1]/4), Image.NEAREST)
+    img = img.resize((int(img.size[0]/4),int(img.size[1]/4)), Image.NEAREST)
 
     has_movement = True
     if ref_img:
@@ -133,32 +169,37 @@ def compare_images(current, reference, threshold):
         if not are_pixels_equal(current_data[i], ref_data[i], threshold):
             diff_pixels += 1
 
-    print diff_pixels
+    print(diff_pixels)
     return diff_pixels
 
 
 background_img = Image.open('background.bmp')
-background_img = background_img.resize((background_img.size[0]/4, background_img.size[1]/4), Image.NEAREST)
+background_img = background_img.resize((int(background_img.size[0]/4),int(background_img.size[1]/4)), Image.NEAREST)
 
 
 def main():
     recognizer.train()
     solver = simple_solver.SimpleSolver()
+
+    # subimg_location(needle,haystack)
+
     img_end_game = Image.open('end_screen.bmp')
-    img_end_game = img_end_game.resize((img_end_game.size[0]/4, img_end_game.size[1]/4), Image.NEAREST)
+    # img_etcctcnd_game = img_end_game.resize((int(img_end_game.size[0]/4),int(img_end_game.size[1]/4)), Image.NEAREST)
+
     total_moves = 0
     while True:
         if not board_is_moving():
             board_img = grab_board()
-            board_img = board_img.resize((board_img.size[0]/4, board_img.size[1]/4), Image.NEAREST)
-            if compare_images(board_img, img_end_game, 10) < 3000:
+            compare = _ImageSearch('end_screen.bmp')
+            if compare :
+                print('gameover')
                 break
             score, move = solver.solve_board(game_board)
-            print '\nBest move found. Score = {0}, Move = {1}'.format(score, move)
+            print('\nBest move found. Score = {0}, Move = {1}, compare = {2}'.format(score, move,compare))
             do_move(move)
             total_moves += 1
-        time.sleep(0.4)
-    print 'Total moves done: ' + str(total_moves)
+        time.sleep(0.3)
+    print('Total moves done: ' + str(total_moves))
 
 
 if __name__ == '__main__':
