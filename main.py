@@ -9,11 +9,11 @@ import simple_solver
 import cProfile
 import pstats
 
-import re,platform ,ctypes,win32api #for subimg_location
+import platform ,ctypes,win32api 
 
 
 def _ImageSearch(file, tolerance = 30):
-    
+    'returns the coordinates of the center of the image'    
     screen_width = win32api.GetSystemMetrics(0)
     screen_height = win32api.GetSystemMetrics(1)
     bit, _ = platform.architecture()         
@@ -30,8 +30,6 @@ def _ImageSearch(file, tolerance = 30):
         _result =  [int(i) for i in _result]
         return(_result)
 
-
-small=Image.open('gameover.png')
 big = ImageGrab.grab()
 
 start_pos = _ImageSearch('corner_top_left.bmp')
@@ -42,7 +40,7 @@ if not start_pos:
 
 print('finded corner_top_left',start_pos)
 
-board_box = (start_pos[1]+5, start_pos[2]+5, start_pos[1] +650, start_pos[2]+580)
+board_box = (start_pos[1]+8, start_pos[2]+11, start_pos[1] +650, start_pos[2]+580)
 
 img_size = (board_box[2]-board_box[0], board_box[3]-board_box[1])
 cell_size = (int(img_size[0]/9), int(img_size[1]/9))
@@ -111,11 +109,13 @@ def do_move(move):
     win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, start_w[0], start_w[1], 0, 0)
     time.sleep(0.1)
     win32api.SetCursorPos(end_w)
-    print('+++++++++++ ismov',board_is_moving())
     time.sleep(0.1)
     win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, end_w[0], end_w[1], 0, 0)
-
     win32api.SetCursorPos(cursor)
+
+    if cursor[0] == cursor[1] == 0:
+        print('exit by mouse shortcut in pos 0,0')
+        exit()
 
 
 def grab_board():
@@ -129,9 +129,11 @@ def grab_board():
         for x in range(0, 9):
             cell_box = (x*cell_size[0], y*cell_size[1], (x+1)*cell_size[0], (y+1)*cell_size[1])
             cell = img.crop(cell_box)
-            #cell.save('Cells/{0}_{1}.bmp'.format(y, x))
+            from datetime import datetime
+            a = datetime.now()
             game_board[y][x] = recognizer.predict(cell)
-
+            b = datetime.now()
+            print(b-a)
     dbg.print_board(game_board)
     return img
 
